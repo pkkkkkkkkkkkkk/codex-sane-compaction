@@ -1,0 +1,4 @@
+.codex-precompaction/
+watcher.log
+watcher.pid
+*.csv

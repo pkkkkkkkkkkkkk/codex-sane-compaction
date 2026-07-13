@@ -1,0 +1,3 @@
+' Hidden launcher for the watcher. Fix the path, save as start-watcher.vbs,
+' put a copy in shell:startup for launch-at-logon. Output -> watcher.log.
+CreateObject("Wscript.Shell").Run "cmd /c cd /d ""C:\PATH\TO\THIS\FOLDER"" && node truncation-alert.mjs >> watcher.log 2>&1", 0, False

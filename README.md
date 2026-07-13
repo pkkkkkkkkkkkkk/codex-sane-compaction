@@ -1,0 +1,120 @@
+# Codex compaction, but actually not braindead
+
+Replaces Codex's lossy auto-compaction summaries with **model-written checkpoint
+files + summary-free context resets**, using only official surfaces: an
+under-development feature flag, the hooks system, and AGENTS.md.
+
+> **Status: experimental.** Built and tested against Codex `0.144.0-alpha.4`
+> (July 2026), riding the under-development `token_budget` feature flag.
+> Maintained best-effort: it gets fixed when it breaks for me. Pin your
+> expectations accordingly.
+
+## The problem
+
+When Codex compacts a long session, the server-side summarizer keeps **only
+user / developer / system messages** verbatim. Every assistant message, every
+reasoning block, every tool call and result — i.e. *all of the model's own
+work-history* — is deleted and survives only as a short, tenseless summary
+(`codex-rs/core/src/compact_remote_v2.rs`, `is_retained_for_remote_compaction_v2`).
+
+Symptoms you may recognize:
+
+- post-compaction, the model treats **long-resolved incidents as breaking news**
+  (a crash from yesterday becomes "the app just crashed!");
+- it forgets what was finished vs. pending and re-does or skips work;
+- it knows what *you* said but is fuzzy about what *it* did — exactly the
+  asymmetry the retention filter predicts.
+
+Empirically, an engaged model writes a far better handoff for its future self
+than any summarization pass over the transcript — it is *inside* the task and
+knows what tomorrow-self needs. This repo just makes that the mechanism.
+
+## How it works
+
+```
+work ────────────────► ~73% full: native reminder fires (exact token count)
+                        │  model writes .codex-precompaction/PRECOMPACTION_<sid>_<n>.md
+                        │  (9-section checkpoint, see docs/FORMAT.md)
+                        ▼
+                       model calls the `new_context` tool itself
+                        │  PreCompact hook writes a factual timeline ledger
+                        │  from the full rollout (backstop, deterministic)
+                        ▼
+                       clean reset — NO summary anywhere
+                        │  AGENTS.md rule: fresh context + own checkpoint = mid-task
+                        │  PreToolUse hook denies the first action once:
+                        │  "read your checkpoint first"
+                        ▼
+work continues ───────► model resumes from its own full-fidelity notes
+```
+
+Numbers (at the July 2026 effective window of 258,400 tokens): hard auto-reset
+at 90% (232.5k, the client-side formula `context_window*9/10`), native reminder
+45k earlier (~187.6k), a hook fallback nag at 85% in case the native reminder
+ever goes missing. All of it scales automatically if OpenAI moves the window.
+
+`"compact first"` typed as a plain message triggers the same flow manually —
+which also means it works from surfaces that lack slash commands (e.g. the
+phone-to-PC bridge).
+
+Sub-agent lanes each get their own session marker, own checkpoints, and own
+cycle; a session-start hook disowns other sessions' leftovers so a fresh
+session never "resumes" a stale checkpoint.
+
+## Components
+
+| File | Role |
+|---|---|
+| `hook/codex-precompaction-hook.mjs` | One script, four hook events: `SessionStart` (issue session marker, disown foreign checkpoints, self-provision FORMAT.md), `PostToolUse` (fallback checkpoint nag at 85%), `PreCompact` (deterministic ledger from the full rollout), `PreToolUse` (post-reset read-gate) |
+| `hooks.json.example` | Hook registration for `~/.codex/hooks.json` |
+| `config.toml.example` | The `[features.token_budget]` block: flag + reminder threshold + checkpoint-instruction template |
+| `AGENTS.md.example` | The `## Context resets` rules: resume-from-checkpoint, user-requested compaction, format reference |
+| `docs/FORMAT.md` | The canonical 9-section checkpoint format (the hook auto-writes this into each workspace — the copy here is for reading) |
+| `extras/` | Optional, Windows-only: rollout watcher with toast alerts for reasoning-truncation and reset-compliance monitoring, plus autostart launcher |
+
+## Install
+
+1. **Copy the hook** somewhere permanent, e.g. `~/.codex/hooks/codex-precompaction-hook.mjs`.
+   Requires Node.js in PATH.
+2. **Register hooks**: merge `hooks.json.example` into `~/.codex/hooks.json`,
+   fixing the absolute script path (all four events point at the same script).
+3. **Enable the flag**: append the `config.toml.example` block to
+   `~/.codex/config.toml`.
+4. **Add the rules**: merge `AGENTS.md.example` into your global
+   `~/.codex/AGENTS.md`.
+5. **Restart the Codex app / CLI** and approve the hook-trust prompt on first
+   run — without that approval the hook layers stay dormant (the core
+   reminder→checkpoint→reset flow still works; you just lose the marker,
+   ledger, and read-gate).
+
+Existing threads pick everything up when resumed after the restart. Artifacts
+live in `<workspace>/.codex-precompaction/` — add that to `.gitignore`.
+
+To revert: delete the `[features.token_budget]` table from config.toml.
+Compaction returns to stock behavior; the hooks then act as a safety layer on
+top of normal summaries and are safe to leave installed.
+
+## Tuning
+
+- `reminder_threshold_tokens` (config.toml, default 45000): how early the
+  checkpoint reminder fires before the hard reset. Lower = more working context
+  per cycle, tighter compliance window.
+- `NAG_FILL_RATIO` (hook, default 0.85): fallback nag threshold; keep it above
+  the native reminder point and below 0.90 (the reset).
+- `RESET_GRACE_MS` (env for the extras watcher, default 180000): how long after
+  a reset the compliance monitor waits for a checkpoint read before alerting.
+
+## Provenance
+
+Extracted from a live debugging investigation into Codex compaction behavior
+(hallucinated stale incidents after compaction on long game-dev sessions).
+Key source references, all at `rust-v0.144.0`:
+
+- retention filter: `codex-rs/core/src/compact_remote_v2.rs` (`is_retained_for_remote_compaction_v2` — user/developer/system only, 64k budget cap)
+- auto-compact trigger: `codex-rs/protocol/src/openai_models.rs` (`auto_compact_token_limit` = 90% of window)
+- summary-free reset: `codex-rs/core/src/compact_token_budget.rs` ("skips model/server summarization and installs a fresh context window instead")
+- hook capabilities: `codex-rs/hooks/` (only SessionStart / PreToolUse / PostToolUse / UserPromptSubmit can inject context; PreCompact/PostCompact observe or block)
+
+## License
+
+MIT — see [LICENSE](LICENSE).

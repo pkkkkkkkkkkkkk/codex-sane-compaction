@@ -1,0 +1,49 @@
+{
+  "description": "Compaction survival: checkpoint nag before reset, factual ledger at reset, forced checkpoint read after. See https://github.com/<you>/codex-sane-compaction",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/codex-precompaction-hook.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/codex-precompaction-hook.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/codex-precompaction-hook.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"/ABSOLUTE/PATH/TO/codex-precompaction-hook.mjs\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

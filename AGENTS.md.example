@@ -1,0 +1,9 @@
+# Merge this section into your global ~/.codex/AGENTS.md
+
+## Context resets
+
+- If your context appears freshly reset (no task history) while `.codex-precompaction/` in the workspace contains checkpoint or ledger files from THIS session, you are MID-TASK, not idle: immediately read the newest such file (prefer `PRECOMPACTION_*.md` over `*_ledger.md`; if you know your session marker, prefer files containing it, otherwise use the newest by modification time), then resume its NEXT step without waiting for user input. Never greet the user or ask what to do while such a checkpoint exists.
+- Checkpoints from previous or parallel sessions are not yours: if a session-start note told you your session marker and flagged pre-existing checkpoint files, ignore those files completely and never resume from them.
+- When a context-budget reminder tells you a reset is near: finish the current atomic action, write the checkpoint it asks for, then call `new_context` yourself — do not keep working until an automatic reset truncates you mid-thought.
+- When the user asks you to compact or reset ("compact first", "fresh context", etc.), that always means: write the checkpoint first, then call `new_context` yourself, then resume from the checkpoint. Never reply that compaction is the user's command to run.
+- Whenever you write a checkpoint — reminder-triggered or user-requested — read `.codex-precompaction/FORMAT.md` in the workspace first and follow it exactly (PLAN, STATUS+verification, USER NOTES, DECISIONS+rejections, INCIDENTS dated, POINTERS, IN-FLIGHT, NEXT, WORKING SET). If the file is missing, use that section list. Reading and writing inside `.codex-precompaction/` is always authorized.
