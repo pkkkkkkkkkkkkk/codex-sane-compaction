@@ -1,3 +1,5 @@
+> ## ⚠️ Never press `/compact` — type **"compact first"** to the model instead — [why?](#never-press-compact)
+
 # Codex Sane Compaction
 
 **Model-authored checkpoints and summary-free context resets** — or: Codex
@@ -12,13 +14,18 @@ surfaces: an under-development feature flag, the hooks system, and AGENTS.md.
 > Maintained best-effort: it gets fixed when it breaks for me. Pin your
 > expectations accordingly.
 
-> **Daily usage — one habit change:** with the flag on, don't run the `/compact`
-> UI command. It resets immediately, *before* the model can write its
-> checkpoint — you'd resume from the machine-generated ledger instead of the
-> model's own handoff. Instead, just **tell the model**: `"compact first"` or
-> `"checkpoint, then compact"`. The AGENTS.md rules turn that into
-> checkpoint → self-reset → resume. (Bonus: plain text works from any surface,
-> including remote bridges that have no slash commands.)
+<a id="never-press-compact"></a>
+## Never press `/compact`
+
+The one habit change this setup demands: with the flag on, the `/compact` UI
+command resets **immediately** — *before* the model can write its checkpoint.
+You'd resume from the machine-generated ledger (dated facts, no intent) instead
+of the model's own handoff. Instead, just **tell the model**: `"compact first"`
+or `"checkpoint, then compact"`. The AGENTS.md rules turn that into
+checkpoint → self-reset → resume, with everything preserved.
+
+Bonus: plain text works from any surface, including remote bridges and mobile
+clients that have no slash commands at all.
 
 ## The problem
 
