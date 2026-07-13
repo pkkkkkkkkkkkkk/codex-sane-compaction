@@ -2,3 +2,4 @@
 watcher.log
 watcher.pid
 *.csv
+tests/.tmp/

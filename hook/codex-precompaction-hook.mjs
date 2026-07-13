@@ -19,7 +19,7 @@
 // (hooks run per-session with that session's transcript_path/session_id).
 // State per session in .codex-precompaction/.state/<session_id>.json.
 
-import { readFileSync, writeFileSync, mkdirSync, statSync, openSync, readSync, closeSync, readdirSync, createReadStream } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, openSync, readSync, closeSync, readdirSync, createReadStream, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 
@@ -49,8 +49,11 @@ function loadState() {
   try { return JSON.parse(readFileSync(statePath, 'utf8')); } catch { return null; }
 }
 function saveState(s) {
+  // atomic: a torn write would parse as "no state" and silently reset cycle counters
   mkdirSync(stateDir, { recursive: true });
-  writeFileSync(statePath, JSON.stringify(s));
+  const tmp = `${statePath}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(s));
+  renameSync(tmp, statePath);
 }
 
 const isCompaction = j =>
@@ -91,11 +94,25 @@ function scanTail() {
     const buf = Buffer.alloc(size - s.offset);
     readSync(fd, buf, 0, buf.length, s.offset);
     closeSync(fd);
-    s.offset = size;
-    for (const line of buf.toString('utf8').split('\n')) {
+    // Only consume up to the last complete line: a partially-written trailing
+    // record must be re-read next invocation, not skipped past and lost.
+    const lastNl = buf.lastIndexOf(0x0a);
+    if (lastNl === -1) { saveState(s); return s; }
+    s.offset += lastNl + 1;
+    for (const line of buf.toString('utf8', 0, lastNl + 1).split('\n')) {
       if (!line.trim()) continue;
       let j; try { j = JSON.parse(line); } catch { continue; }
-      if (isCompaction(j)) { s.compactions++; s.fill = 0; } // fill is stale until the next token_count
+      if (isCompaction(j)) {
+        // one real reset can emit multiple compaction-shaped records within the
+        // same instant (observed in production rollouts) — count it once
+        const ts = Date.parse(j.timestamp) || Date.now();
+        if (ts - (s.lastCompactionTs ?? 0) > 5000) {
+          s.compactions++;
+          s.gateDenials = 0;
+          s.fill = 0; // fill is stale until the next token_count
+        }
+        s.lastCompactionTs = ts;
+      }
       // native token_budget reminder already told the model to checkpoint -> our nag stands down this cycle
       if (line.includes('TOKEN-BUDGET-REMINDER') || line.includes('tokens remain before a summary-free context reset')) {
         s.nativeNagCycle = s.compactions + 1;
@@ -181,32 +198,53 @@ function sessionStart() {
 }
 
 // ---------------- PreToolUse: post-compaction read-the-checkpoint gate ----------------
+// Denies unrelated actions until a checkpoint-targeting call COMPLETES (recorded by
+// PostToolUse), capped at 2 denials — a model reading via a variable/glob would
+// otherwise be denied forever while genuinely complying.
+const touchesCheckpoint = () => {
+  const t = JSON.stringify(input.tool_input ?? '');
+  return t.includes('PRECOMPACTION_') || t.includes('.codex-precompaction');
+};
+
 function preToolUse() {
   const s = scanTail();
   if (!s) return;
   if (s.compactions <= s.remindedCycle) { saveState(s); return; }
   const art = newestArtifact();
-  const touchesCheckpoint =
-    JSON.stringify(input.tool_input ?? '').includes('PRECOMPACTION_') ||
-    JSON.stringify(input.tool_input ?? '').includes('.codex-precompaction');
-  s.remindedCycle = s.compactions;
-  saveState(s);
-  if (touchesCheckpoint || !art) {
-    if (!art) {
-      // nothing to read; just warn, don't block
-      out({
-        hookSpecificOutput: {
-          hookEventName: 'PreToolUse',
-          additionalContext:
-            `[precompaction-hook] Context was just compacted and no checkpoint file exists for this session. ` +
-            `Your history is a lossy, tenseless summary — it may present long-resolved events (crashes, ` +
-            `interruptions, past decisions) as new or ongoing. Re-derive progress from git status/diff and the ` +
-            `filesystem before acting on anything the summary claims.`,
-        },
-      });
-    }
-    return; // model is already reading the checkpoint — let it through
+  if (!art) {
+    // nothing to read; warn once, don't block
+    s.remindedCycle = s.compactions;
+    saveState(s);
+    out({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext:
+          `[precompaction-hook] Context was just compacted and no checkpoint file exists for this session. ` +
+          `Your history is a lossy, tenseless summary — it may present long-resolved events (crashes, ` +
+          `interruptions, past decisions) as new or ongoing. Re-derive progress from git status/diff and the ` +
+          `filesystem before acting on anything the summary claims.`,
+      },
+    });
+    return;
   }
+  if (touchesCheckpoint()) { saveState(s); return; } // reading it now; PostToolUse records the proof
+  if ((s.gateDenials ?? 0) >= 2) {
+    // cap reached: stop fighting, latch, and warn instead
+    s.remindedCycle = s.compactions;
+    saveState(s);
+    out({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext:
+          `[precompaction-hook] Proceeding without a verified checkpoint read after ${s.gateDenials} denials. ` +
+          `Your history is a lossy post-compaction summary; read ${join(artDir, art)} before trusting it, ` +
+          `and reconcile with git status/diff.`,
+      },
+    });
+    return;
+  }
+  s.gateDenials = (s.gateDenials ?? 0) + 1;
+  saveState(s);
   out({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -224,6 +262,11 @@ function preToolUse() {
 function postToolUse() {
   const s = scanTail();
   if (!s) return;
+  // completed checkpoint-targeting call = proof of read; releases the PreToolUse gate
+  if (s.compactions > s.remindedCycle && touchesCheckpoint()) {
+    s.remindedCycle = s.compactions;
+    s.gateDenials = 0;
+  }
   const cycle = s.compactions + 1;
   if (s.nativeNagCycle === cycle) { saveState(s); return; } // native reminder owns this cycle
   if (s.window > 0 && s.fill / s.window >= NAG_FILL_RATIO && s.naggedCycle < cycle) {

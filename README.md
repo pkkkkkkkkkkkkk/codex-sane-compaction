@@ -1,8 +1,11 @@
-# Codex compaction, but actually not braindead
+# Codex Sane Compaction
 
-Replaces Codex's lossy auto-compaction summaries with **model-written checkpoint
-files + summary-free context resets**, using only official surfaces: an
-under-development feature flag, the hooks system, and AGENTS.md.
+**Model-authored checkpoints and summary-free context resets** — or: Codex
+compaction, but actually not braindead.
+
+Replaces Codex's lossy auto-compaction summaries with model-written,
+task-directed handoff files + clean context resets, using only official
+surfaces: an under-development feature flag, the hooks system, and AGENTS.md.
 
 > **Status: experimental.** Built and tested against Codex `0.144.0-alpha.4`
 > (July 2026), riding the under-development `token_budget` feature flag.
@@ -45,7 +48,7 @@ work ────────────────► ~73% full: native remin
                         │  PreToolUse hook denies the first action once:
                         │  "read your checkpoint first"
                         ▼
-work continues ───────► model resumes from its own full-fidelity notes
+work continues ───────► model resumes from its own task-directed handoff
 ```
 
 Numbers (at the July 2026 effective window of 258,400 tokens): hard auto-reset
@@ -113,6 +116,11 @@ cat chk.md   # expect: CHECKPOINT-ALPHA + RESUMED-OK, output ends TEST-COMPLETE
 If `chk.md` gains `RESUMED-OK`, the model checkpointed, reset itself with no
 summary, and autonomously resumed from its own notes. See
 `docs/EXAMPLE_CHECKPOINT.md` for what a real checkpoint should look like.
+
+The hook itself has a synthetic-transcript test suite covering the nag/gate
+lifecycle, partial-line handling, duplicate compaction records, ledger
+numbering across resumes, native-reminder suppression, and multi-session
+workspaces: `node tests/run-all.mjs`.
 
 ## Tuning
 
