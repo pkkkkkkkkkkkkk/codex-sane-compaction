@@ -1,5 +1,5 @@
 {
-  "description": "Compaction survival: checkpoint nag before reset, factual ledger at reset, forced checkpoint read after. See https://github.com/<you>/codex-sane-compaction",
+  "description": "Compaction survival: checkpoint nag before reset, factual ledger at reset, forced checkpoint read after. See https://github.com/pkkkkkkkkkkkkk/codex-sane-compaction",
   "hooks": {
     "SessionStart": [
       {

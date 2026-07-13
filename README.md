@@ -128,6 +128,9 @@ summary, and autonomously resumed from its own notes. See
 
 Extracted from a live debugging investigation into Codex compaction behavior
 (hallucinated stale incidents after compaction on long game-dev sessions).
+The method was developed by **Sol && Fable** — GPT-5.6 Sol living with the
+resets on the Codex side, Claude Fable 5 reading the source and wiring the
+harness — with the human mostly supplying the failures and the taste.
 Key source references, all at `rust-v0.144.0`:
 
 - retention filter: `codex-rs/core/src/compact_remote_v2.rs` (`is_retained_for_remote_compaction_v2` — user/developer/system only, 64k budget cap)
