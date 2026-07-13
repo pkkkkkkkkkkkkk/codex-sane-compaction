@@ -1,0 +1,35 @@
+# Optional: delegation briefs (merge into ~/.codex/AGENTS.md)
+#
+# Not compaction-related, but born from the same investigation: a 17-lane
+# subagent swarm that reported "complete" while live files were byte-for-byte
+# unchanged. The lanes weren't lying — their briefs never said whether to
+# apply changes or stage candidates, so they did the safe minimal thing and
+# the orchestrator inflated "candidate prepared" into "implemented".
+# These rules make delegation briefs carry that information explicitly.
+
+## Delegation briefs
+
+- Subagents do what the brief says — no more. A vague goal produces a
+  conservative, minimally-scoped artifact. Treat any mismatch between what a
+  lane delivered and what was wanted as a briefing defect to fix in the brief.
+- Every delegated prompt must declare its delivery mode explicitly: either the
+  lane applies the change to the live deliverable itself, or the lane prepares
+  an artifact that the orchestrator will integrate afterward. Both are valid;
+  leaving it unstated is not.
+- In prepare-mode, integration is the orchestrator's own remaining task: the
+  overall job is not done until the prepared work is applied, and it must be
+  tracked as pending — never counted as completed by the lane's handoff.
+- State scope latitude explicitly. If an aggressive rebuild or rewrite is
+  wanted, say so in the brief; a lane told to "improve X" may default to the
+  smallest safe change and will not expand scope on its own initiative.
+- Define overall "done" as the user's end check (the change is visible or
+  observable in the running product), not an intermediate proof such as a
+  schema pass, a manifest, or a prepared artifact existing.
+- Relay lane results at exactly the strength the lane reported. "Candidate
+  prepared" must never be summarized as "implemented". Report applied changes
+  and prepared-but-pending work as separate categories, never one "complete".
+- Before fanning a task pattern across many lanes, run one lane end-to-end and
+  check its output against the intended brief. If the first lane interpreted
+  the brief differently than intended, fix the brief before scaling.
+- After a crash, restart, or interrupted turn, re-derive progress from the
+  filesystem and diffs, not from pre-crash reports.

@@ -70,7 +70,7 @@ session never "resumes" a stale checkpoint.
 | `config.toml.example` | The `[features.token_budget]` block: flag + reminder threshold + checkpoint-instruction template |
 | `AGENTS.md.example` | The `## Context resets` rules: resume-from-checkpoint, user-requested compaction, format reference |
 | `docs/FORMAT.md` | The canonical 9-section checkpoint format (the hook auto-writes this into each workspace — the copy here is for reading) |
-| `extras/` | Optional, Windows-only: rollout watcher with toast alerts for reasoning-truncation and reset-compliance monitoring, plus autostart launcher |
+| `extras/` | Optional: rollout watcher with toast alerts for reasoning-truncation and reset-compliance monitoring (Windows-only), autostart launcher, and a related AGENTS.md section on subagent delegation briefs |
 
 ## Install
 
@@ -93,6 +93,26 @@ live in `<workspace>/.codex-precompaction/` — add that to `.gitignore`.
 To revert: delete the `[features.token_budget]` table from config.toml.
 Compaction returns to stock behavior; the hooks then act as a safety layer on
 top of normal summaries and are safe to leave installed.
+
+## Smoke test
+
+Verify the whole loop in a throwaway folder without waiting for a real session
+to fill up (~30k tokens):
+
+```bash
+mkdir /tmp/tbtest && cd /tmp/tbtest
+codex exec -C . --skip-git-repo-check --sandbox workspace-write --color never \
+  "Plumbing test, be terse. Do exactly and only: (1) write \
+.codex-precompaction/PRECOMPACTION_<your session marker>_T1.md with sections \
+PLAN: reset test; STATUS: checkpoint written; NEXT: append the line RESUMED-OK \
+to chk.md, then print TEST-COMPLETE. (2) Write chk.md containing CHECKPOINT-ALPHA. \
+(3) Call the new_context tool. Nothing else before the reset."
+cat chk.md   # expect: CHECKPOINT-ALPHA + RESUMED-OK, output ends TEST-COMPLETE
+```
+
+If `chk.md` gains `RESUMED-OK`, the model checkpointed, reset itself with no
+summary, and autonomously resumed from its own notes. See
+`docs/EXAMPLE_CHECKPOINT.md` for what a real checkpoint should look like.
 
 ## Tuning
 
