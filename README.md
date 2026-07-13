@@ -12,6 +12,14 @@ surfaces: an under-development feature flag, the hooks system, and AGENTS.md.
 > Maintained best-effort: it gets fixed when it breaks for me. Pin your
 > expectations accordingly.
 
+> **Daily usage — one habit change:** with the flag on, don't run the `/compact`
+> UI command. It resets immediately, *before* the model can write its
+> checkpoint — you'd resume from the machine-generated ledger instead of the
+> model's own handoff. Instead, just **tell the model**: `"compact first"` or
+> `"checkpoint, then compact"`. The AGENTS.md rules turn that into
+> checkpoint → self-reset → resume. (Bonus: plain text works from any surface,
+> including remote bridges that have no slash commands.)
+
 ## The problem
 
 When Codex compacts a long session, the server-side summarizer keeps **only
