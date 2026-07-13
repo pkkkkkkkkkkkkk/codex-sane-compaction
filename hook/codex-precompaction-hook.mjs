@@ -158,6 +158,12 @@ full current context, for a reader who knows nothing except this file. Sections:
    the reset: exact file paths with line numbers, symbol/function names, how the
    relevant subsystems behave, commands that worked. Anything you would
    otherwise have to re-search.
+10. NOW — the exact action you were performing or about to perform at the
+   moment of writing this, and any LIVE user signals: a stop/escape/interruption
+   the user just issued, an answer you are waiting for, a correction you have
+   acknowledged but not yet applied. User-issued stops and corrections REMAIN IN
+   FORCE across the reset — a fresh context or new turn does NOT clear them;
+   only the user can.
 
 Rules: no narrative recap and no conversation back-and-forth — record outcomes
 and current state only. Date-stamp past events. Keep it under ~150 lines.
@@ -281,7 +287,8 @@ function postToolUse() {
           `reset is imminent and nothing of your own work-history will survive it. Before doing anything else, ` +
           `read ${join(artDir, 'FORMAT.md')} and write a checkpoint to ${file} following it exactly ` +
           `(PLAN, STATUS+verification, USER NOTES, DECISIONS+rejections, INCIDENTS dated, POINTERS, IN-FLIGHT, ` +
-          `NEXT, WORKING SET — outcomes only, no narrative). Then continue the task where you left off.`,
+          `NEXT, WORKING SET, NOW incl. live user signals — outcomes only, no narrative). ` +
+          `Then continue the task where you left off.`,
       },
     });
     return;

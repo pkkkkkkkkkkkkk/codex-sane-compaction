@@ -27,6 +27,12 @@ full current context, for a reader who knows nothing except this file. Sections:
    the reset: exact file paths with line numbers, symbol/function names, how the
    relevant subsystems behave, commands that worked. Anything you would
    otherwise have to re-search.
+10. NOW — the exact action you were performing or about to perform at the
+   moment of writing this, and any LIVE user signals: a stop/escape/interruption
+   the user just issued, an answer you are waiting for, a correction you have
+   acknowledged but not yet applied. User-issued stops and corrections REMAIN IN
+   FORCE across the reset — a fresh context or new turn does NOT clear them;
+   only the user can.
 
 Rules: no narrative recap and no conversation back-and-forth — record outcomes
 and current state only. Date-stamp past events. Keep it under ~150 lines.
