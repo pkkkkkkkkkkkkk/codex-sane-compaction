@@ -248,8 +248,22 @@ function postToolUse() {
 
 // ---------------- PreCompact: deterministic ledger from full rollout ----------------
 async function preCompact() {
-  const s = loadState();
-  const cycle = (s?.compactions ?? 0) + 1;
+  // Derive the cycle from files on disk, not transcript-scoped state: a resume
+  // swaps the rollout file and resets the state counter, which would shadow-
+  // number and overwrite earlier ledgers. Pair with the model's checkpoint if
+  // it already wrote one this cycle; otherwise take the next free slot.
+  let ckptHigh = 0;
+  const ledgers = new Set();
+  try {
+    for (const f of readdirSync(artDir)) {
+      const m = f.match(new RegExp(`^PRECOMPACTION_${sid8}_(\\d+)(_ledger)?\\.md$`));
+      if (!m) continue;
+      if (m[2]) ledgers.add(parseInt(m[1], 10));
+      else ckptHigh = Math.max(ckptHigh, parseInt(m[1], 10));
+    }
+  } catch { /* no dir yet */ }
+  let cycle = Math.max(ckptHigh, (loadState()?.compactions ?? 0) + 1, 1);
+  while (ledgers.has(cycle)) cycle++;
   const lines = [];
   let model = '?', firstTs = '', lastTs = '', patches = 0;
   const rl = createInterface({ input: createReadStream(input.transcript_path), crlfDelay: Infinity });
