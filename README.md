@@ -135,6 +135,28 @@ Key source references, all at `rust-v0.144.0`:
 - summary-free reset: `codex-rs/core/src/compact_token_budget.rs` ("skips model/server summarization and installs a fresh context window instead")
 - hook capabilities: `codex-rs/hooks/` (only SessionStart / PreToolUse / PostToolUse / UserPromptSubmit can inject context; PreCompact/PostCompact observe or block)
 
+## If you work on Codex
+
+Everything here is a prosthetic for things the platform could do natively.
+The concrete wishlist, cheapest first:
+
+1. **Stabilize `token_budget`.** The flag already implements the right
+   architecture (reminder → model-written handoff → summary-free reset).
+   This repo is evidence it works in production; it just needs to graduate
+   from under-development before an update quietly breaks everyone using it.
+2. **Ship a default post-reset resume behavior.** Today the model wakes from a
+   `new_context` reset with total amnesia and yields an idle greeting; an
+   AGENTS.md rule fixes it, but "read your own handoff file and continue" is
+   sane default behavior, not user configuration.
+3. **If the summary path stays: anchor it in time.** The current summary is
+   tenseless — resolved incidents read as breaking news after compaction.
+   Date-stamping events and separating done/pending/in-flight in the summary
+   prompt would fix the worst failure mode at zero architectural cost.
+4. **Let compaction-adjacent hooks inject context.** `PreCompact`/`PostCompact`
+   can only observe or block; the read-gate in this repo has to piggyback on
+   `PreToolUse` instead. A `PostCompact` `additionalContext` would make the
+   whole recovery path first-class.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
