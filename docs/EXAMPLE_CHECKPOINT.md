@@ -4,6 +4,28 @@ user rulings across multiple days of resets. -->
 
 # PRECOMPACTION checkpoint — session 84713ac6c05a
 
+## TASK
+
+- Quote: "swap the session cookies for short lived jwts, but keep it behind a
+  flag until we trust it — refresh in httponly cookie not localstorage" (user,
+  2026-07-13).
+- Meaning: replace the cookie-session auth path with short-lived JWTs, flagged,
+  with refresh tokens stored server-set httpOnly — a *parallel* path during
+  dual-run, not an in-place rewrite.
+- Not: NOT a big-bang replacement of the cookie path (explicitly deferred until
+  the dual-run ends), and NOT refresh-token-in-localStorage even if a library
+  default makes that easier.
+- Why: httpOnly requirement is XSS containment — any convenience tradeoff that
+  exposes the refresh token to page JS defeats the point of the migration.
+
+## INVARIANTS
+
+<!-- copied verbatim from checkpoint _1; do not re-summarize -->
+- Auth changes ship behind feature flags with a dual-run period; never cut over
+  and remove the old path in the same change.
+- Refresh tokens are never readable by page JavaScript.
+- SSO integration is out of scope for this project — separate effort.
+
 ## PLAN
 
 Migrate the auth service from session cookies to short-lived JWTs per the

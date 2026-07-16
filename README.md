@@ -52,7 +52,7 @@ knows what tomorrow-self needs. This repo just makes that the mechanism.
 ```
 work ────────────────► ~73% full: native reminder fires (exact token count)
                         │  model writes .codex-precompaction/PRECOMPACTION_<sid>_<n>.md
-                        │  (9-section checkpoint, see docs/FORMAT.md)
+                        │  (12-section checkpoint, see docs/FORMAT.md)
                         ▼
                        model calls the `new_context` tool itself
                         │  PreCompact hook writes a factual timeline ledger
@@ -87,7 +87,7 @@ session never "resumes" a stale checkpoint.
 | `hooks.json.example` | Hook registration for `~/.codex/hooks.json` |
 | `config.toml.example` | The `[features.token_budget]` block: flag + reminder threshold + checkpoint-instruction template |
 | `AGENTS.md.example` | The `## Context resets` rules: resume-from-checkpoint, user-requested compaction, format reference |
-| `docs/FORMAT.md` | The canonical 9-section checkpoint format (the hook auto-writes this into each workspace — the copy here is for reading) |
+| `docs/FORMAT.md` | The canonical 12-section checkpoint format (the hook auto-writes this into each workspace — the copy here is for reading) |
 | `extras/` | Optional: rollout watcher with toast alerts for reasoning-truncation and reset-compliance monitoring (Windows-only), autostart launcher, and a related AGENTS.md section on subagent delegation briefs |
 
 ## Install
