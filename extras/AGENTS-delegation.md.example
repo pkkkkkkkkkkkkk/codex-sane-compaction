@@ -33,3 +33,16 @@
   the brief differently than intended, fix the brief before scaling.
 - After a crash, restart, or interrupted turn, re-derive progress from the
   filesystem and diffs, not from pre-crash reports.
+- Your own context window is the scarce resource; lane tokens are not. In a
+  large repo, do not do broad source recon (reading whole files, wide greps,
+  mapping a subsystem) in your own context: spawn a recon lane at session
+  start with a batched question brief, keep it alive as the lookup oracle for
+  follow-ups, and spawn more lanes freely rather than reading inline. Route
+  mechanical lookups (where is X defined, list matching files, what literal
+  strings does Y check) to a cheap/fast lane; comprehension questions (how
+  does this subsystem work, what is the contract) to a strong lane. Require
+  every lane answer to carry file:line anchors plus a short quoted snippet,
+  and read only the anchored lines you are about to edit against — verify
+  claims by anchor, never by re-reading whole files into your own window.
+  (Why: inline recon is what fills the window and forces the next reset —
+  and every reset is a chance for task drift. A lane's window is disposable.)
