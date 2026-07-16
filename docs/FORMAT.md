@@ -59,6 +59,14 @@ Rules: no narrative recap and no conversation back-and-forth — record outcomes
 and current state only. Date-stamp past events. Keep it under ~150 lines.
 Name the file PRECOMPACTION_<your session marker>_<n>.md in this directory.
 
+Ambiguity check (applies to EVERY section, not just TASK): you cannot see your
+own ambiguity — the context that resolves it is in your head, not in the file,
+and your post-reset self will have only the file. Assume any load-bearing
+phrase that admits two readings WILL be read the wrong way. Prefer concrete
+referents (paths, asset names, counts) over abstractions, and where a phrase
+could be taken two ways, say which way is wrong — "one connected hull
+(assembled from separate prefab assets, NOT a single merged mesh)".
+
 After a reset: if reality (tooling limits, code structure, gate failures)
 pushes against TASK Meaning, re-read TASK Quote and Why before adapting —
 extending the tooling may BE the task. A requirement does not shrink because
