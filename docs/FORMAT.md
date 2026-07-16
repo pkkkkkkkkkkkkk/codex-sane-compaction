@@ -21,6 +21,11 @@ full current context, for a reader who knows nothing except this file. Sections:
    re-summarize it from memory and never drop an entry without an explicit
    user decision recorded in DECISIONS. Re-written from memory each cycle,
    these decay silently — copying is what makes them survive long sessions.
+   Project/session rules ONLY — never restate AGENTS.md or other standing
+   instructions here: those are re-injected automatically after every reset,
+   and a paraphrase that drifts competes with (and can contradict) the
+   authoritative text. Where a standing rule matters to the task, cite it
+   ("follow the AGENTS.md cleanup rules") instead of rephrasing it.
 3. PLAN — the plan you are following, near-verbatim, including anything the user
    just approved or amended.
 4. STATUS — done / not done / currently doing. Every "done" item must note how it
@@ -36,7 +41,9 @@ full current context, for a reader who knows nothing except this file. Sections:
 8. POINTERS — commit hashes, branch, key file paths, artifact locations. One
    line each. Never inline file contents; the filesystem survives the reset.
 9. IN-FLIGHT — running subagents and their assignments, background processes,
-   locks, temporary workarounds. State "none" explicitly if none.
+   locks, temporary workarounds. State "none" explicitly if none. A completed
+   lane is a result, not work in flight: record its findings in STATUS or
+   WORKING SET and never schedule NEXT to wait on it.
 10. NEXT — the exact next action, concretely, including what NOT to redo
    (expensive reruns, re-verification that already passed).
 11. WORKING SET — knowledge you already dug up and will need again right after
