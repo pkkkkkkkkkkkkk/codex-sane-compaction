@@ -88,19 +88,44 @@ session never "resumes" a stale checkpoint.
 | `config.toml.example` | The `[features.token_budget]` block: flag + reminder threshold + checkpoint-instruction template |
 | `AGENTS.md.example` | The `## Context resets` rules: resume-from-checkpoint, user-requested compaction, format reference |
 | `docs/FORMAT.md` | The canonical 12-section checkpoint format (the hook auto-writes this into each workspace — the copy here is for reading) |
+| `installer/install.mjs`, `install.ps1`, `install.sh` | Cross-platform, idempotent installer with dry-run, backups, conflict detection, and isolated verification |
 | `extras/` | Optional: rollout watcher with toast alerts for reasoning-truncation and reset-compliance monitoring (Windows-only), autostart launcher, and a related AGENTS.md section on subagent delegation briefs |
 
 ## Install
 
-1. **Copy the hook** somewhere permanent, e.g. `~/.codex/hooks/codex-precompaction-hook.mjs`.
-   Requires Node.js in PATH.
-2. **Register hooks**: merge `hooks.json.example` into `~/.codex/hooks.json`,
-   fixing the absolute script path (all four events point at the same script).
-3. **Enable the flag**: append the `config.toml.example` block to
-   `~/.codex/config.toml`.
-4. **Add the rules**: merge `AGENTS.md.example` into your global
-   `~/.codex/AGENTS.md`.
-5. **Restart the Codex app / CLI** and approve the hook-trust prompt on first
+Requires Node.js 18 or newer in PATH. Preview every change first:
+
+```powershell
+# Windows PowerShell
+.\install.ps1 --dry-run
+.\install.ps1
+```
+
+```bash
+# Linux / macOS
+./install.sh --dry-run
+./install.sh
+```
+
+The installer targets `$CODEX_HOME` when set, otherwise `~/.codex`. It copies
+the hook into `hooks/codex-sane-compaction/`, merges all four registrations
+without disturbing unrelated hooks, pins the absolute Node executable used for
+installation, adds managed token-budget and AGENTS.md blocks when no equivalent
+section already exists, and verifies the complete hook shape and result.
+Every changed pre-existing file is copied to a timestamped directory under
+`.codex-sane-compaction-backups/` before an atomic write.
+
+If another `codex-precompaction-hook.mjs` is already registered, installation
+stops before writing. Review `--dry-run --replace-existing-hook`, then rerun
+with `--replace-existing-hook` only when the old registration should be
+migrated. Existing unmanaged `token_budget` or `## Context resets` sections
+also stop the install before writing; review them and use
+`--skip-token-budget` or `--skip-agents` to preserve those layers unchanged.
+Use `node installer/install.mjs verify` to recheck a managed installation.
+Linked or hard-linked target files are refused rather than silently replacing
+dotfile-manager topology.
+
+After installation, **restart the Codex app / CLI** and approve the hook-trust prompt on first
    run — without that approval the hook layers stay dormant (the core
    reminder→checkpoint→reset flow still works; you just lose the marker,
    ledger, and read-gate).
@@ -132,10 +157,16 @@ If `chk.md` gains `RESUMED-OK`, the model checkpointed, reset itself with no
 summary, and autonomously resumed from its own notes. See
 `docs/EXAMPLE_CHECKPOINT.md` for what a real checkpoint should look like.
 
-The hook itself has a synthetic-transcript test suite covering the nag/gate
-lifecycle, partial-line handling, duplicate compaction records, ledger
-numbering across resumes, native-reminder suppression, and multi-session
-workspaces: `node tests/run-all.mjs`.
+The hook and installer have a synthetic test suite covering the nag/gate
+lifecycle, realistic 17+ KB subagent metadata, parsed native-reminder
+suppression, partial-line handling, duplicate compaction records, ledger
+numbering, multi-session workspaces, installer backups, conflict handling,
+dry-run behavior, and idempotence: `node tests/run-all.mjs`.
+
+Installer tests always pass an explicit isolated `--codex-home`; they never
+read or modify the machine's active Codex configuration. CI runs the same suite
+on Windows and Linux. The runner prints and retains its uniquely owned artifact
+directory instead of recursively cleaning a caller-provided path.
 
 ## Tuning
 

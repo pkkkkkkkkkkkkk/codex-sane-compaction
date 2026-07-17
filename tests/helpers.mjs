@@ -1,15 +1,26 @@
 import { writeFileSync, appendFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const testsDir = dirname(fileURLToPath(import.meta.url));
 export const hookPath = join(testsDir, '..', 'hook', 'codex-precompaction-hook.mjs');
 export const watcherPath = join(testsDir, '..', 'extras', 'truncation-alert.mjs');
+const tmpBase = process.env.CODEX_TEST_TMP_ROOT
+  ? resolve(process.env.CODEX_TEST_TMP_ROOT)
+  : join(testsDir, '.tmp');
+const runId = process.env.CODEX_TEST_RUN_ID ?? `direct-${process.pid}`;
+if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(runId)) {
+  throw new Error('CODEX_TEST_RUN_ID must be one safe path segment');
+}
+export const tmpRoot = join(tmpBase, `codex-sane-compaction-${runId}`);
 
 export function makeWorkspace(name) {
-  const cwd = join(testsDir, '.tmp', name);
-  const transcript = join(testsDir, '.tmp', `${name}-rollout.jsonl`);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(name)) {
+    throw new Error('test workspace name must be one safe path segment');
+  }
+  const cwd = join(tmpRoot, name);
+  const transcript = join(tmpRoot, `${name}-rollout.jsonl`);
   rmSync(cwd, { recursive: true, force: true });
   rmSync(transcript, { force: true });
   mkdirSync(cwd, { recursive: true });

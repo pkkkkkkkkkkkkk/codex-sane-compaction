@@ -24,6 +24,9 @@ writeFileSync(laneTranscript, JSON.stringify({
   type: 'session_meta',
   payload: {
     id: SID, // parent thread id — the collision under test
+    // Real Codex lane metadata currently exceeds 17 KB. Keep source after the
+    // padding so this test fails if the hook regresses to a fixed-size prefix.
+    model_instructions: 'x'.repeat(17_000),
     source: { subagent: { thread_spawn: { parent_thread_id: SID, agent_nickname: 'TestLane' } } },
   },
 }) + '\n');

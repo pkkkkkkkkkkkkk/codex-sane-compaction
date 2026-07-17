@@ -5,7 +5,7 @@
 // current. This hook gives each compaction cycle a fresh checkpoint artifact:
 //
 //  - PostToolUse (every tool call, incremental-tail read, ~ms):
-//      context fill >= 80% of window -> inject a one-shot instruction to write
+//      context fill >= 85% of window -> inject a one-shot instruction to write
 //      PRECOMPACTION_<sid>_<n>.md from full (uncompacted) context, then keep working.
 //  - PreCompact (rare): deterministically generate a factual timeline ledger
 //    PRECOMPACTION_<sid>_<n>_ledger.md from the full rollout as a backstop
@@ -27,6 +27,8 @@ import { createInterface } from 'node:readline';
 // the native token_budget reminder fires 45k before that (~73% of the live 258.4k window).
 // 0.85 sits between them: native always speaks first, and we still have ~13k before the reset.
 const NAG_FILL_RATIO = 0.85;
+const SESSION_META_MAX_BYTES = 1024 * 1024;
+const SESSION_META_CHUNK_BYTES = 16 * 1024;
 
 function readStdin() {
   try { return JSON.parse(readFileSync(0, 'utf8')); } catch { return null; }
@@ -44,13 +46,35 @@ const sid = String(input.session_id ?? 'unknown');
 // a lane's compaction stole the parent's next ledger slot, and the shared
 // state file thrashed between the two transcripts). Detect lanes from the
 // rollout's session_meta and key them by their own rollout file id instead.
+function readSessionMeta() {
+  let fd;
+  try {
+    fd = openSync(input.transcript_path, 'r');
+    const chunks = [];
+    let total = 0;
+    while (total < SESSION_META_MAX_BYTES) {
+      const buf = Buffer.alloc(Math.min(SESSION_META_CHUNK_BYTES, SESSION_META_MAX_BYTES - total));
+      const n = readSync(fd, buf, 0, buf.length, total);
+      if (n === 0) break;
+      const nl = buf.indexOf(0x0a, 0);
+      chunks.push(buf.subarray(0, nl === -1 ? n : nl));
+      total += nl === -1 ? n : nl;
+      if (nl !== -1) return JSON.parse(Buffer.concat(chunks, total).toString('utf8'));
+    }
+    if (chunks.length && total < SESSION_META_MAX_BYTES) {
+      return JSON.parse(Buffer.concat(chunks, total).toString('utf8'));
+    }
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) try { closeSync(fd); } catch {}
+  }
+  return null;
+}
+
 function laneId() {
   try {
-    const fd = openSync(input.transcript_path, 'r');
-    const buf = Buffer.alloc(8192);
-    const n = readSync(fd, buf, 0, 8192, 0);
-    closeSync(fd);
-    const meta = JSON.parse(buf.toString('utf8', 0, n).split('\n', 1)[0]);
+    const meta = readSessionMeta();
     if (!(meta?.payload?.source?.subagent ?? meta?.source?.subagent)) return null;
     const m = input.transcript_path.match(/([0-9a-fA-F]{12})\.jsonl$/);
     if (m) return m[1].toLowerCase();
@@ -85,6 +109,17 @@ const isCompaction = j =>
   // token_budget-feature reset (summary-free new window) emits a ContextCompaction turn item
   j.type === 'ContextCompaction' ||
   j.payload?.type === 'ContextCompaction';
+
+function isNativeTokenBudgetReminder(j) {
+  if (j.type !== 'response_item' || j.payload?.type !== 'message' || j.payload?.role !== 'developer') {
+    return false;
+  }
+  return Array.isArray(j.payload.content) && j.payload.content.some(part =>
+    part?.type === 'input_text' &&
+    typeof part.text === 'string' &&
+    /^(?:TOKEN-BUDGET-REMINDER:\s*)?(?:Only\s+)?\d+\s+tokens remain before a summary-free context reset\b/.test(part.text.trimStart())
+  );
+}
 
 // Newest existing checkpoint (model-written preferred over ledger) for this session.
 function newestArtifact() {
@@ -135,8 +170,9 @@ function scanTail() {
         }
         s.lastCompactionTs = ts;
       }
-      // native token_budget reminder already told the model to checkpoint -> our nag stands down this cycle
-      if (line.includes('TOKEN-BUDGET-REMINDER') || line.includes('tokens remain before a summary-free context reset')) {
+      // Only the native developer-message record owns suppression. Tool output,
+      // user text, source/config reads, and other transcript echoes must not.
+      if (isNativeTokenBudgetReminder(j)) {
         s.nativeNagCycle = s.compactions + 1;
       }
       if (j.type === 'event_msg' && j.payload?.type === 'token_count') {
