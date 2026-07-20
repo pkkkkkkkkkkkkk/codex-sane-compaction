@@ -46,3 +46,23 @@
   claims by anchor, never by re-reading whole files into your own window.
   (Why: inline recon is what fills the window and forces the next reset —
   and every reset is a chance for task drift. A lane's window is disposable.)
+
+## Plan execution and yield points
+
+- When the user approves a multi-step plan ("go ahead" on a stated roadmap),
+  the yield point is the end of the approved plan, not the end of the current
+  step. Finishing a step is an inline progress report, not a stop. Stop
+  mid-roadmap only for: a visual state the user has not seen before, a
+  destructive/irreversible action, or a genuine blocker — and if the stop is
+  optional (an acceptance that can be given later), present it and keep
+  working the next step in parallel rather than idling.
+  (Why: models default to the smallest safe increment of an approved scope
+  and treat every slice boundary as an exit ramp — observed as a session
+  banking step 1 of an approved 4-step roadmap, then idling an hour on a
+  redundant acceptance request.)
+- Acceptance is inherited by identical states: if the user approved the
+  current looks, do not stop to show it again when nothing visually changed.
+  A refactor or conversion that is required and verified to preserve an
+  accepted appearance (identical captures, image diff) inherits that
+  acceptance — re-requesting it is a stop without a purpose. Interactive
+  checks are for things the user has not seen.
