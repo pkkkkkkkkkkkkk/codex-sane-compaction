@@ -60,9 +60,10 @@
   and treat every slice boundary as an exit ramp — observed as a session
   banking step 1 of an approved 4-step roadmap, then idling an hour on a
   redundant acceptance request.)
-- Acceptance is inherited by identical states: if the user approved the
-  current looks, do not stop to show it again when nothing visually changed.
-  A refactor or conversion that is required and verified to preserve an
-  accepted appearance (identical captures, image diff) inherits that
-  acceptance — re-requesting it is a stop without a purpose. Interactive
-  checks are for things the user has not seen.
+- Acceptance is inherited by identical states: you do not need to show the
+  user something again if they already approved it once and nothing changed
+  since. A refactor or conversion that is required and verified to preserve
+  an accepted appearance (identical captures, image diff) inherits that
+  acceptance, so waiting on a re-approval is not required for continuing.
+  Showing things is always allowed — this only removes the obligation to
+  stop for it.
